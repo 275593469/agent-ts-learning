@@ -1,0 +1,11 @@
+# 构建镜像时排除的内容：减小上下文体积，避免把本地环境塞进镜像
+node_modules
+dist
+.git
+.gitignore
+.memory
+.env
+.env.*
+npm-debug.log*
+*.md
+!README.md

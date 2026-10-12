@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# 第 5 周长期记忆落盘目录
+.memory/

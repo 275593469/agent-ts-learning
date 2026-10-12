@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>园区 Agent 平台 · 第 8 周演示</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --line: #e3e8ef;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --err: #dc2626;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+      line-height: 1.6;
+    }
+
+    header { max-width: 1180px; margin: 0 auto 20px; }
+
+    header h1 { margin: 0 0 4px; font-size: 20px; }
+
+    header p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .row { display: flex; gap: 8px; }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    button.ghost { background: #fff; color: var(--text); border-color: var(--line); }
+
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .out {
+      margin-top: 12px;
+      min-height: 140px;
+      max-height: 320px;
+      overflow: auto;
+      padding: 12px;
+      background: #f9fafb;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .bar {
+      height: 8px;
+      background: #eef2f7;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0 8px;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--ok);
+      transition: width .3s ease;
+    }
+
+    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .metric .k { font-size: 12px; color: var(--muted); }
+
+    .metric .v { font-size: 18px; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+
+    th { color: var(--muted); font-weight: 500; }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #eef2ff;
+      color: var(--primary);
+    }
+
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>园区设施运维 Agent 平台</h1>
+    <p>第 8 周交付物：流式对话（SSE） · 后台任务进度 · 服务指标 · 鉴权与限流</p>
+  </header>
+
+  <div class="layout">
+    <div style="display:grid; gap:16px;">
+      <section class="card">
+        <h2>
+          <span>流式对话（SSE）</span>
+          <span class="tag" id="healthTag">health: -</span>
+        </h2>
+
+        <div class="row">
+          <input id="question" type="text" value="用三句话说明园区能耗强度怎么算" />
+          <button id="askBtn">发送</button>
+          <button class="ghost" id="clearBtn">清空</button>
+        </div>
+
+        <div class="out" id="chatOut">等待提问……</div>
+        <div class="hint">逐 token 返回，前端直接追加渲染；关闭连接会同时中断服务端生成。</div>
+      </section>
+
+      <section class="card">
+        <h2>
+          <span>后台任务进度</span>
+          <button id="taskBtn">创建任务</button>
+        </h2>
+
+        <div class="bar"><span id="taskBar"></span></div>
+        <div class="out" id="taskOut" style="min-height:100px;">尚未创建任务。</div>
+      </section>
+    </div>
+
+    <div style="display:grid; gap:16px; align-content:start;">
+      <section class="card">
+        <h2>
+          <span>服务指标</span>
+          <button class="ghost" id="refreshBtn">刷新</button>
+        </h2>
+
+        <div class="metrics" id="metricsGrid"></div>
+
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>路由</th><th>次数</th><th>错误</th><th>平均耗时</th></tr>
+          </thead>
+          <tbody id="routeTable">
+            <tr><td colspan="4" style="color:var(--muted);">暂无数据</td></tr>
+          </tbody>
+        </table>
+
+        <div class="hint">数据来自 GET /api/metrics，每 5 秒自动刷新。</div>
+      </section>
+
+      <section class="card">
+        <h2><span>访问令牌</span></h2>
+        <div class="row">
+          <input id="token" type="text" placeholder="服务端开启鉴权时填写（API_TOKEN）" />
+          <button class="ghost" id="saveToken">保存</button>
+        </div>
+        <div class="hint">
+          SSE（EventSource）无法自定义请求头，所以这里把令牌拼进查询参数；
+          生产环境更推荐用短时效令牌或 Cookie。
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    var tokenInput = document.getElementById("token");
+    var chatOut = document.getElementById("chatOut");
+    var taskOut = document.getElementById("taskOut");
+    var taskBar = document.getElementById("taskBar");
+
+    localStorage.getItem("apiToken") && (tokenInput.value = localStorage.getItem("apiToken"));
+
+    function token() {
+      return tokenInput.value.trim();
+    }
+
+    function authHeaders() {
+      return token() ? { Authorization: "Bearer " + token() } : {};
+    }
+
+    function withToken(url) {
+      if (!token()) return url;
+      return url + (url.indexOf("?") >= 0 ? "&" : "?") + "token=" + encodeURIComponent(token());
+    }
+
+    function refreshHealth() {
+      fetch("/api/health", { headers: authHeaders() })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          document.getElementById("healthTag").textContent = data.success ? "health: ok" : "health: fail";
+        })
+        .catch(function () {
+          document.getElementById("healthTag").textContent = "health: unreachable";
+        });
+    }
+
+    function ask() {
+      var question = document.getElementById("question").value.trim();
+      if (!question) return;
+
+      chatOut.textContent = "";
+      var es = new EventSource(withToken("/api/chat/stream?question=" + encodeURIComponent(question)));
+
+      es.addEventListener("start", function () { chatOut.textContent = "生成中……\n\n"; });
+      es.addEventListener("token", function (event) {
+        var payload = JSON.parse(event.data);
+        if (chatOut.textContent === "生成中……\n\n") chatOut.textContent = "";
+        chatOut.textContent += payload.text;
+        chatOut.scrollTop = chatOut.scrollHeight;
+      });
+      es.addEventListener("done", function () { es.close(); refreshMetrics(); });
+      es.addEventListener("error", function (event) {
+        if (event.data) chatOut.textContent += "\n[错误] " + JSON.parse(event.data).message;
+        es.close();
+      });
+    }
+
+    function createTask() {
+      fetch("/api/tasks", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+        body: JSON.stringify({ name: "楼宇能耗批量分析" })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (payload) {
+          if (!payload.success) {
+            taskOut.textContent = "创建失败：" + payload.message;
+            return;
+          }
+
+          taskOut.textContent = "";
+          taskBar.style.width = "0%";
+
+          var es = new EventSource(withToken("/api/tasks/" + payload.data.taskId + "/stream"));
+          es.addEventListener("progress", function (event) {
+            var ev = JSON.parse(event.data);
+            taskBar.style.width = ev.progress + "%";
+            taskOut.textContent += ev.step + " - " + ev.message + "\n";
+            taskOut.scrollTop = taskOut.scrollHeight;
+          });
+          es.addEventListener("done", function () { es.close(); refreshMetrics(); });
+        });
+    }
+
+    function metricCard(key, value) {
+      return '<div class="metric"><div class="k">' + key + '</div><div class="v">' + value + "</div></div>";
+    }
+
+    function refreshMetrics() {
+      fetch("/api/metrics", { headers: authHeaders() })
+        .then(function (r) { return r.json(); })
+        .then(function (payload) {
+          if (!payload.success) return;
+          var m = payload.data;
+
+          document.getElementById("metricsGrid").innerHTML =
+            metricCard("请求总数", m.totalRequests) +
+            metricCard("错误率", m.errorRate) +
+            metricCard("P95 延迟", m.latencyMs.p95 + " ms") +
+            metricCard("活跃 SSE", m.activeSseConnections) +
+            metricCard("创建任务", m.tasksCreated) +
+            metricCard("运行时长", m.uptimeSeconds + " s");
+
+          var rows = m.byRoute.map(function (item) {
+            var color = item.errors > 0 ? "color:var(--err)" : "";
+            return "<tr><td>" + item.route + "</td><td>" + item.count + "</td><td style='" + color + "'>" +
+              item.errors + "</td><td>" + item.avgMs + " ms</td></tr>";
+          }).join("");
+
+          document.getElementById("routeTable").innerHTML =
+            rows || "<tr><td colspan='4' style='color:var(--muted);'>暂无数据</td></tr>";
+        })
+        .catch(function () { /* 忽略轮询失败 */ });
+    }
+
+    document.getElementById("askBtn").addEventListener("click", ask);
+    document.getElementById("clearBtn").addEventListener("click", function () { chatOut.textContent = "等待提问……"; });
+    document.getElementById("taskBtn").addEventListener("click", createTask);
+    document.getElementById("refreshBtn").addEventListener("click", refreshMetrics);
+    document.getElementById("saveToken").addEventListener("click", function () {
+      localStorage.setItem("apiToken", token());
+      refreshHealth();
+    });
+
+    document.getElementById("question").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") ask();
+    });
+
+    refreshHealth();
+    refreshMetrics();
+    setInterval(refreshMetrics, 5000);
+  </script>
+</body>
+</html>
