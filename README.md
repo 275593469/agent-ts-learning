@@ -141,3 +141,7 @@ docker run --rm -p 3000:3000 -e OPENAI_API_KEY=sk-xxx campus-agent:latest
 
 - 第 4 周未使用 `MemoryVectorStore`：`@langchain/core` v1 已移除该类，改为手写内存向量库以讲清检索与重排原理。
 - 第 6 周依赖 `@modelcontextprotocol/sdk`、`@langchain/mcp-adapters`，已在 `package.json` 声明。
+
+## 许可证
+
+[MIT](./LICENSE) © 2026 chiangcheng
